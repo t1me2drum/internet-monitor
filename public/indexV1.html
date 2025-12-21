@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Internet Monitor</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 100vh;
+      margin: 0;
+      font-family: Consolas, monospace;
+      background: #111;
+      color: #eee;
+    }
+
+    .panel {
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      border-right: 2px solid #333;
+    }
+
+    h2 { color: #0f0; }
+
+    .offline { color: #f55; }
+    .online { color: #5f5; }
+
+    button {
+      padding: 8px 12px;
+      background: #333;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #444; }
+
+    .log-btn {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+    }
+
+    .log-container {
+      margin-top: 50px; /* відступ під кнопку */
+      overflow-y: auto;
+      height: calc(100% - 70px);
+    }
+
+    ul#log {
+      padding-left: 0;
+      list-style: none;
+    }
+
+    pre {
+      background: #000;
+      padding: 10px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel" id="statusPanel">
+    <h2>🔍 Перевірка з'єднання</h2>
+    <div id="status">Очікування...</div>
+    <button id="toggleNotificationsBtn">Включити нотифікації</button>
+  </div>
+
+  <div class="panel" id="logPanel">
+    <h2>📜 Лог подій</h2>
+    <button id="showLogBtn" class="log-btn">📁 Відкрити лог сьогодні</button>
+    <div class="log-container">
+      <ul id="log"></ul>
+      <pre id="logFile"></pre>
+    </div>
+  </div>
+
+  <audio id="soundOffline" src="vespene.mp3"></audio>
+  <audio id="soundOnline" src="sc_marine.mp3"></audio>
+
+  <script>
+    const socket = io();
+
+    const statusDiv = document.getElementById('status');
+    const logList = document.getElementById('log');
+    const soundOffline = document.getElementById('soundOffline');
+    const soundOnline = document.getElementById('soundOnline');
+    const showLogBtn = document.getElementById('showLogBtn');
+    const logFile = document.getElementById('logFile');
+    const toggleBtn = document.getElementById('toggleNotificationsBtn');
+
+    let notificationsEnabled = false;
+
+    function playSound(sound) {
+      sound.currentTime = 0;
+      const playPromise = sound.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => console.warn('Не вдалося програти звук:', err));
+      }
+    }
+
+    // Обробка подій socket.io
+    socket.on('ping', (data) => {
+      statusDiv.textContent = `${data.time} — ${data.alive ? '✅ Онлайн' : '❌ Офлайн'}`;
+      statusDiv.className = data.alive ? 'online' : 'offline';
+    });
+
+    socket.on('log', (data) => {
+      const li = document.createElement('li');
+      li.textContent = `${data.time} — ${data.status}`;
+      logList.prepend(li);
+
+      if (notificationsEnabled) {
+        if (data.status.includes('пропав')) {
+          playSound(soundOffline);
+        } else if (data.status.includes('відновлено')) {
+          playSound(soundOnline);
+        }
+      }
+    });
+
+    // Тумблер нотифікацій
+    toggleBtn.addEventListener('click', () => {
+      notificationsEnabled = !notificationsEnabled;
+      toggleBtn.textContent = notificationsEnabled ? 'Вимкнути нотифікації' : 'Включити нотифікації';
+    });
+
+    // Кнопка "Відкрити лог сьогодні"
+    showLogBtn.addEventListener('click', async () => {
+      const res = await fetch('/log/today');
+      if (res.ok) {
+        const text = await res.text();
+        logFile.textContent = text;
+      } else {
+        logFile.textContent = '⚠️ Лог-файл за сьогодні ще не створено.';
+      }
+    });
+  </script>
+</body>
+</html>
