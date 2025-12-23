@@ -151,3 +151,4 @@ function logEvent(statusText, timeStr) {
 
 // ===== старт =====
 server.listen(PORT, () => console.log(`✅ Internet Monitor v1.3.6+hostnames: http://localhost:${PORT}`));
+console.log("Bug fixed in main");
