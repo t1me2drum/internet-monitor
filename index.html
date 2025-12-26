@@ -299,31 +299,40 @@
       const ctx = canvas.getContext('2d');
       const color = COLORS[Object.keys(charts).length % COLORS.length];
 
-      const chart = new Chart(ctx, {
-        type: 'line',
-        data: { labels: [], datasets: [{
-          label: 'Ping (ms)',
-          data: [],
-          borderColor: color,
-          backgroundColor: color.replace("1)", "0.15)"),
-          segment: {
-            borderColor: (ctx) => {
-              const p0 = ctx.p0?.parsed?.y;
-              const p1 = ctx.p1?.parsed?.y;
-              return p0 === 0 || p1 === 0 ? "red" : color;
-            }
-          },
-          tension: 0.2,
-          pointRadius: 0
-        }]},
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: { min: 0, max: 300 }},
-          plugins: { legend: { display: false }}
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderColor: color,
+        fill: true,
+        pointRadius: 0,
+        tension: 0.25,
+        backgroundColor: (ctx) => {
+          const area = ctx.chart.chartArea;
+          if (!area) return color;
+          const g = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+          g.addColorStop(0, color.replace('1)', '0.35)'));
+          g.addColorStop(1, color.replace('1)', '0)'));
+          return g;
+        },
+        segment: {
+          borderColor: ctx =>
+            ctx.p0?.parsed?.y === 0 || ctx.p1?.parsed?.y === 0
+              ? 'red'
+              : color
         }
-      });
-
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: { min: 0, max: 300 }},
+      plugins: { legend: { display: false }}
+    }
+  });
+  
       charts[m.id] = { chart };
       monitors[m.id] = m;
       updateExtraCount();
